@@ -13,11 +13,12 @@ from .filters import apply_filters, safe_div
 
 app = FastAPI(title="Canadian Superstore Dashboard API", version="1.0.0")
 
-# CORS for local dev
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=[
+        "https://canadian-superstore-frontend.onrender.com"
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
