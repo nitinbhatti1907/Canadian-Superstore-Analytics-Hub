@@ -1,6 +1,6 @@
 import type { Filters } from '../types'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 function appendMulti(params: URLSearchParams, key: string, values?: string[]) {
   if (!values || values.length === 0) return

@@ -16,7 +16,9 @@ app = FastAPI(title="Canadian Superstore Dashboard API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://canadian-superstore-frontend.onrender.com"
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+        "https://canadian-superstore-frontend.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
