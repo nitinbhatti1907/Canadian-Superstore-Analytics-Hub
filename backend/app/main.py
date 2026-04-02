@@ -610,7 +610,7 @@ def rfm_segments(
 @app.get("/api/basket_pairs")
 def basket_pairs(
     top_n: int = 15,
-    top_products: int = 200,
+    top_products: int = 80,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     category: Optional[str] = None,

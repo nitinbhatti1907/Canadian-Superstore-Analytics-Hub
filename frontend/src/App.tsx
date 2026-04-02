@@ -70,37 +70,37 @@ const NAV_ITEMS: Array<{
   desc: string
   tag: string
 }> = [
-    {
-      key: 'overview',
-      label: 'Overview',
-      desc: 'KPI summary and big-picture performance',
-      tag: '01'
-    },
-    {
-      key: 'sales',
-      label: 'Sales Analytics',
-      desc: 'Revenue, profit, discount and trend analysis',
-      tag: '02'
-    },
-    {
-      key: 'customers',
-      label: 'Customer Insights',
-      desc: 'Segmentation and customer value patterns',
-      tag: '03'
-    },
-    {
-      key: 'products',
-      label: 'Product & Basket',
-      desc: 'Top products, category mix and pair analysis',
-      tag: '04'
-    },
-    {
-      key: 'explorer',
-      label: 'Data Explorer',
-      desc: 'Filtered records and report-ready notes',
-      tag: '05'
-    }
-  ]
+  {
+    key: 'overview',
+    label: 'Overview',
+    desc: 'KPI summary and big-picture performance',
+    tag: '01'
+  },
+  {
+    key: 'sales',
+    label: 'Sales Analytics',
+    desc: 'Revenue, profit, discount and trend analysis',
+    tag: '02'
+  },
+  {
+    key: 'customers',
+    label: 'Customer Insights',
+    desc: 'Segmentation and customer value patterns',
+    tag: '03'
+  },
+  {
+    key: 'products',
+    label: 'Product & Basket',
+    desc: 'Top products, category mix and pair analysis',
+    tag: '04'
+  },
+  {
+    key: 'explorer',
+    label: 'Data Explorer',
+    desc: 'Filtered records and report-ready notes',
+    tag: '05'
+  }
+]
 
 const DEFAULT_LAYOUTS_BY_PAGE: PageLayoutsState = {
   overview: {
@@ -302,42 +302,42 @@ function normalizePageLayouts(input: unknown): PageLayoutsState {
   const parsed = input as Record<string, unknown>
   const next = {} as PageLayoutsState
 
-    ; (Object.keys(DEFAULT_LAYOUTS_BY_PAGE) as PageKey[]).forEach((pageKey) => {
-      const defaultLayouts = DEFAULT_LAYOUTS_BY_PAGE[pageKey]
-      const rawPageLayouts =
-        parsed[pageKey] && typeof parsed[pageKey] === 'object'
-          ? (parsed[pageKey] as Record<string, unknown>)
-          : {}
+  ;(Object.keys(DEFAULT_LAYOUTS_BY_PAGE) as PageKey[]).forEach((pageKey) => {
+    const defaultLayouts = DEFAULT_LAYOUTS_BY_PAGE[pageKey]
+    const rawPageLayouts =
+      parsed[pageKey] && typeof parsed[pageKey] === 'object'
+        ? (parsed[pageKey] as Record<string, unknown>)
+        : {}
 
-      const pageLayouts: GridLayouts = {}
+    const pageLayouts: GridLayouts = {}
 
-      Object.entries(defaultLayouts).forEach(([breakpoint, defaultItems]) => {
-        const rawItems = Array.isArray(rawPageLayouts[breakpoint])
-          ? (rawPageLayouts[breakpoint] as Array<Record<string, unknown>>)
-          : []
+    Object.entries(defaultLayouts).forEach(([breakpoint, defaultItems]) => {
+      const rawItems = Array.isArray(rawPageLayouts[breakpoint])
+        ? (rawPageLayouts[breakpoint] as Array<Record<string, unknown>>)
+        : []
 
-        const cleaned = rawItems
-          .filter((item) => typeof item?.i === 'string')
-          .map((item) => ({
-            i: String(item.i),
-            x: Number(item.x ?? 0),
-            y: Number(item.y ?? 0),
-            w: Number(item.w ?? 4),
-            h: Number(item.h ?? 4),
-            minW: Number(item.minW ?? 2),
-            minH: Number(item.minH ?? 2),
-            maxW: item.maxW !== undefined ? Number(item.maxW) : undefined,
-            maxH: item.maxH !== undefined ? Number(item.maxH) : undefined
-          }))
+      const cleaned = rawItems
+        .filter((item) => typeof item?.i === 'string')
+        .map((item) => ({
+          i: String(item.i),
+          x: Number(item.x ?? 0),
+          y: Number(item.y ?? 0),
+          w: Number(item.w ?? 4),
+          h: Number(item.h ?? 4),
+          minW: Number(item.minW ?? 2),
+          minH: Number(item.minH ?? 2),
+          maxW: item.maxW !== undefined ? Number(item.maxW) : undefined,
+          maxH: item.maxH !== undefined ? Number(item.maxH) : undefined
+        }))
 
-        const ids = new Set(cleaned.map((item) => item.i))
-        const missing = defaultItems.filter((item) => !ids.has(item.i)).map((item) => ({ ...item }))
+      const ids = new Set(cleaned.map((item) => item.i))
+      const missing = defaultItems.filter((item) => !ids.has(item.i)).map((item) => ({ ...item }))
 
-        pageLayouts[breakpoint] = [...cleaned, ...missing]
-      })
-
-      next[pageKey] = pageLayouts
+      pageLayouts[breakpoint] = [...cleaned, ...missing]
     })
+
+    next[pageKey] = pageLayouts
+  })
 
   return next
 }
@@ -453,10 +453,11 @@ function LayoutEditorToolbar({
         onClick={onToggleEdit}
         title={editMode ? `Exit ${pageLabel} layout edit` : `Edit ${pageLabel} layout`}
         aria-label={editMode ? `Exit ${pageLabel} layout edit` : `Edit ${pageLabel} layout`}
-        className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl border transition ${editMode
+        className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl border transition ${
+          editMode
             ? 'border-cyan-400/35 bg-cyan-400/15 text-cyan-100 shadow-lg shadow-cyan-500/10'
             : 'border-white/10 bg-slate-900/55 text-slate-200 hover:bg-white/10'
-          }`}
+        }`}
       >
         <svg
           viewBox="0 0 24 24"
@@ -519,7 +520,11 @@ function InsightCard({
   compact?: boolean
 }) {
   return (
-    <div className={`h-full rounded-3xl border border-white/10 bg-slate-900/55 shadow-soft backdrop-blur ${compact ? 'p-4' : 'p-5'}`}>
+    <div
+      className={`h-full rounded-3xl border border-white/10 bg-slate-900/55 shadow-soft backdrop-blur ${
+        compact ? 'p-4' : 'p-5'
+      }`}
+    >
       <h3 className={`${compact ? 'text-base' : 'text-lg'} font-semibold text-white`}>{title}</h3>
       <div className="mt-3 text-sm leading-6 text-slate-400">{children}</div>
     </div>
@@ -583,23 +588,18 @@ export default function App() {
       .catch((e) => setError(e.message))
   }, [])
 
-  async function fetchAll(nextApplied: Filters, nextOffset: number) {
+  async function fetchAll(nextApplied: Filters) {
     setLoading(true)
     setError(null)
 
     try {
-      const qb = buildQuery(nextApplied)
-
-      const [s, t, c, r, p, di, rfmRes, pairRes, rr] = await Promise.all([
-        apiGet<Summary>(`/api/summary${qb}`),
+      const [s, t, c, r, p, di] = await Promise.all([
+        apiGet<Summary>(`/api/summary${buildQuery(nextApplied)}`),
         apiGet<{ data: TimePoint[] }>(`/api/timeseries${buildQuery(nextApplied, { granularity: 'month' })}`),
         apiGet<{ data: NamedMetric[] }>(`/api/category_breakdown${buildQuery(nextApplied, { level: 'category' })}`),
         apiGet<{ data: NamedMetric[] }>(`/api/region_breakdown${buildQuery(nextApplied, { level: 'region', top_n: 12 })}`),
         apiGet<{ data: NamedMetric[] }>(`/api/top_products${buildQuery(nextApplied, { metric: 'sales', top_n: 10 })}`),
-        apiGet<{ data: DiscountImpact[] }>(`/api/discount_impact${buildQuery(nextApplied, { bins: 8 })}`),
-        apiGet<{ data: RfmSegment[] }>(`/api/rfm_segments${qb}`),
-        apiGet<{ data: BasketPair[] }>(`/api/basket_pairs${buildQuery(nextApplied, { top_n: 15, top_products: 200 })}`),
-        apiGet<RowsResponse>(`/api/rows${buildQuery(nextApplied, { limit: 25, offset: nextOffset })}`)
+        apiGet<{ data: DiscountImpact[] }>(`/api/discount_impact${buildQuery(nextApplied, { bins: 8 })}`)
       ])
 
       setSummary(s)
@@ -608,9 +608,6 @@ export default function App() {
       setRegion(r.data)
       setTopProducts(p.data)
       setDiscountImpact(di.data)
-      setRfm(rfmRes.data)
-      setPairs(pairRes.data)
-      setRows(rr)
     } catch (e: any) {
       setError(e.message || 'Failed to load')
     } finally {
@@ -619,8 +616,49 @@ export default function App() {
   }
 
   useEffect(() => {
-    fetchAll(applied, offset)
-  }, [queryBase, offset])
+    fetchAll(applied)
+  }, [queryBase])
+
+  useEffect(() => {
+    if (activePage !== 'customers') return
+
+    apiGet<{ data: RfmSegment[] }>(`/api/rfm_segments${buildQuery(applied)}`)
+      .then((res) => setRfm(res.data))
+      .catch(() => setRfm([]))
+  }, [activePage, queryBase])
+
+  useEffect(() => {
+    if (activePage !== 'products') return
+
+    apiGet<{ data: BasketPair[] }>(
+      `/api/basket_pairs${buildQuery(applied, { top_n: 15, top_products: 80 })}`
+    )
+      .then((res) => setPairs(res.data))
+      .catch(() => setPairs([]))
+  }, [activePage, queryBase])
+
+  useEffect(() => {
+    if (activePage !== 'explorer') return
+
+    apiGet<RowsResponse>(`/api/rows${buildQuery(applied, { limit: 25, offset })}`)
+      .then((res) => setRows(res))
+      .catch(() => setRows(null))
+  }, [activePage, queryBase, offset])
+
+  useEffect(() => {
+    if (activePage !== 'customers') {
+      setRfm([])
+    }
+
+    if (activePage !== 'products') {
+      setPairs([])
+    }
+
+    if (activePage !== 'explorer') {
+      setRows(null)
+      setOffset(0)
+    }
+  }, [activePage, queryBase])
 
   function onApply() {
     setOffset(0)
@@ -717,9 +755,7 @@ export default function App() {
   const activeFilterLabels = getActiveFilterLabels(applied)
   const currentPage = NAV_ITEMS.find((item) => item.key === activePage)
 
-  const topSegment = rfm.length
-    ? [...rfm].sort((a, b) => b.customers - a.customers)[0]
-    : null
+  const topSegment = rfm.length ? [...rfm].sort((a, b) => b.customers - a.customers)[0] : null
 
   const pageWidgets = useMemo<Record<PageKey, WidgetConfig[]>>(
     () => ({
@@ -1199,10 +1235,11 @@ export default function App() {
                   <button
                     key={item.key}
                     onClick={() => setActivePage(item.key)}
-                    className={`w-full rounded-2xl border p-3.5 text-left transition ${isActive
-                      ? 'border-cyan-400/30 bg-cyan-400/10 shadow-lg shadow-cyan-500/10'
-                      : 'border-white/8 bg-white/[0.03] hover:bg-white/[0.06]'
-                      }`}
+                    className={`w-full rounded-2xl border p-3.5 text-left transition ${
+                      isActive
+                        ? 'border-cyan-400/30 bg-cyan-400/10 shadow-lg shadow-cyan-500/10'
+                        : 'border-white/8 bg-white/[0.03] hover:bg-white/[0.06]'
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -1250,10 +1287,11 @@ export default function App() {
                     <button
                       key={item.key}
                       onClick={() => setActivePage(item.key)}
-                      className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition ${isActive
-                        ? 'border-cyan-400/30 bg-cyan-400/12 text-white'
-                        : 'border-white/10 bg-white/5 text-slate-300'
-                        }`}
+                      className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition ${
+                        isActive
+                          ? 'border-cyan-400/30 bg-cyan-400/12 text-white'
+                          : 'border-white/10 bg-white/5 text-slate-300'
+                      }`}
                     >
                       {item.label}
                     </button>
