@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import gc
 from typing import Any, Dict, List, Optional
 
 from itertools import combinations
 
+import numpy as np
 import pandas as pd
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +14,26 @@ from .data import load_dataset
 from .filters import apply_filters, safe_div
 
 app = FastAPI(title="Canadian Superstore Dashboard API", version="1.0.0")
+
+
+_META_CACHE: Optional[Dict[str, Any]] = None
+
+
+@app.on_event("startup")
+def _warm_cache() -> None:
+    """Pre-load the dataset at boot so the first user request doesn't pay the
+    parse cost (and so any memory pressure surfaces during deploy, not at
+    request time). Also pre-builds the meta payload, which never changes."""
+    global _META_CACHE
+    df = load_dataset()
+    _META_CACHE = _build_meta(df)
+    gc.collect()
+
+
+@app.get("/api/health")
+def health() -> Dict[str, str]:
+    """Cheap endpoint for Render's health checks / uptime pings."""
+    return {"status": "ok"}
 
 app.add_middleware(
     CORSMiddleware,
@@ -60,15 +82,21 @@ def _df_filtered(
     )
 
 
-@app.get("/api/meta")
-def meta() -> Dict[str, Any]:
-    df = load_dataset()
-
+def _build_meta(df: pd.DataFrame) -> Dict[str, Any]:
     min_date = df["Order Date"].min()
     max_date = df["Order Date"].max()
 
     def uniq(col: str) -> List[str]:
-        return sorted([x for x in df[col].dropna().astype(str).unique().tolist() if x and x != "nan"])
+        if col not in df.columns:
+            return []
+        # Categorical columns expose .cat.categories — much cheaper than
+        # .unique() because it avoids materializing per-row Python strings.
+        s = df[col]
+        if hasattr(s, "cat"):
+            vals = s.cat.categories.tolist()
+        else:
+            vals = s.dropna().astype(str).unique().tolist()
+        return sorted([x for x in vals if x and x != "nan"])
 
     return {
         "date_min": None if pd.isna(min_date) else min_date.date().isoformat(),
@@ -82,6 +110,14 @@ def meta() -> Dict[str, Any]:
         "ship_modes": uniq("Ship Mode"),
         "order_priorities": uniq("Order Priority"),
     }
+
+
+@app.get("/api/meta")
+def meta() -> Dict[str, Any]:
+    global _META_CACHE
+    if _META_CACHE is None:
+        _META_CACHE = _build_meta(load_dataset())
+    return _META_CACHE
 
 
 @app.get("/api/summary")
@@ -163,16 +199,21 @@ def timeseries(
         order_priority=order_priority,
         min_discount=min_discount,
         max_discount=max_discount,
-    ).copy()
+    )
 
     if dff.empty:
         return {"granularity": granularity, "data": []}
 
-    dff = dff.dropna(subset=["Order Date"]).set_index("Order Date").sort_index()
-
     rule = {"day": "D", "week": "W", "month": "MS"}[granularity]
 
-    agg = dff.resample(rule).agg({"Sales": "sum", "Profit": "sum", "Quantity": "sum"}).reset_index()
+    agg = (
+        dff[["Order Date", "Sales", "Profit", "Quantity"]]
+        .dropna(subset=["Order Date"])
+        .set_index("Order Date")
+        .resample(rule)
+        .agg({"Sales": "sum", "Profit": "sum", "Quantity": "sum"})
+        .reset_index()
+    )
     agg["date"] = agg["Order Date"].dt.date.astype(str)
 
     data = [
@@ -388,21 +429,34 @@ def discount_impact(
     if dff.empty:
         return {"data": []}
 
-    # Profit margin per row
-    dff = dff.copy()
-    dff["profit_margin_row"] = dff.apply(lambda r: safe_div(r["Profit"], r["Sales"]) if pd.notna(r["Sales"]) else 0.0, axis=1)
-
-    # Bin by discount
     bins = max(3, min(int(bins), 20))
-    dff["disc_bin"] = pd.cut(dff["Discount"].fillna(0), bins=bins)
+
+    # Vectorized profit margin (replaces a row-by-row .apply that allocated
+    # a Python object per row across 51K rows — the worst per-request memory
+    # spike in the old code).
+    sales = dff["Sales"]
+    margin = np.where(
+        sales.notna() & (sales != 0),
+        dff["Profit"].astype("float32") / sales.where(sales != 0, np.nan),
+        0.0,
+    )
+
+    work = pd.DataFrame(
+        {
+            "Sales": sales.values,
+            "Profit": dff["Profit"].values,
+            "profit_margin_row": margin,
+            "disc_bin": pd.cut(dff["Discount"].fillna(0).values, bins=bins),
+        }
+    )
 
     agg = (
-        dff.groupby("disc_bin", dropna=False)
+        work.groupby("disc_bin", dropna=False, observed=False)
         .agg(
             sales=("Sales", "sum"),
             profit=("Profit", "sum"),
             avg_margin=("profit_margin_row", "mean"),
-            rows=("Row ID", "count"),
+            rows=("Sales", "count"),
         )
         .reset_index()
     )
@@ -572,21 +626,19 @@ def rfm_segments(
     cust["f"] = qscore(cust["frequency"], invert=False)
     cust["m"] = qscore(cust["monetary"], invert=False)
 
-    def label(row: pd.Series) -> str:
-        r, f, m = int(row["r"]), int(row["f"]), int(row["m"])
-        if r >= 3 and f >= 3 and m >= 3:
-            return "Champions"
-        if f >= 3 and r >= 2:
-            return "Loyal"
-        if m >= 3 and r >= 2:
-            return "Big Spenders"
-        if r == 4 and f == 1:
-            return "New"
-        if r == 1 and (f >= 3 or m >= 3):
-            return "At Risk"
-        return "Others"
-
-    cust["rfm_segment"] = cust.apply(label, axis=1)
+    # Vectorized RFM labeling — np.select evaluates conditions in order and
+    # picks the first match, mirroring the original if/elif chain. Avoids
+    # the per-row Python object allocation of df.apply(axis=1).
+    r, f, m = cust["r"].values, cust["f"].values, cust["m"].values
+    conditions = [
+        (r >= 3) & (f >= 3) & (m >= 3),
+        (f >= 3) & (r >= 2),
+        (m >= 3) & (r >= 2),
+        (r == 4) & (f == 1),
+        (r == 1) & ((f >= 3) | (m >= 3)),
+    ]
+    choices = ["Champions", "Loyal", "Big Spenders", "New", "At Risk"]
+    cust["rfm_segment"] = np.select(conditions, choices, default="Others")
 
     seg = (
         cust.groupby("rfm_segment")
